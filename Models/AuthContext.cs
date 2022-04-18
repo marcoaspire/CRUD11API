@@ -6,12 +6,11 @@ using System.Threading.Tasks;
 
 namespace Crud11API.Models
 {
-    public class PaymentDetailContext : DbContext
+    public class AuthContext : DbContext
     {
-        public PaymentDetailContext(DbContextOptions<PaymentDetailContext> options) : base(options)
+        public AuthContext(DbContextOptions<PaymentDetailContext> options) : base(options)
         { }
 
-        public DbSet<PaymentDetail2> PaymentDetails { get; set; }
         public DbSet<User> Users { get; set; }
     }
 }
