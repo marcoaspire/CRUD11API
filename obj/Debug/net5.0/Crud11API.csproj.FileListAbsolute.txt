@@ -146,3 +146,4 @@ C:\Users\marco.antonio\source\repos\Crud11API\bin\Debug\net5.0\System.Web.WebPag
 C:\Users\marco.antonio\source\repos\Crud11API\bin\Debug\net5.0\System.Web.WebPages.dll
 C:\Users\marco.antonio\source\repos\Crud11API\bin\Debug\net5.0\Microsoft.Web.Infrastructure.dll
 C:\Users\marco.antonio\source\repos\Crud11API\bin\Debug\net5.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
+C:\Users\marco.antonio\source\repos\Crud11API\obj\Debug\net5.0\Crud11API.csproj.AssemblyReference.cache

@@ -1,4 +1,5 @@
 using Crud11API.Models;
+using Crud11API.Repository;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -46,10 +47,23 @@ namespace Crud11API
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = Configuration["JWT:Issuer"],
                     ValidAudience = Configuration["JWT:Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(Key)
+                    IssuerSigningKey = new SymmetricSecurityKey(Key),
+                    ClockSkew = TimeSpan.Zero 
+                };
+                //event that let us know if the JWT Access Token is expired
+                o.Events = new JwtBearerEvents
+                {
+                    OnAuthenticationFailed = context => {
+                        if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
+                        {
+                            //helps us to call the refresh IAction method from the client-side
+                            context.Response.Headers.Add("IS-TOKEN-EXPIRED", "true"); 
+                        }
+                        return Task.CompletedTask;
+                    }
                 };
             });
-            //services.AddSingleton<IJWTManagerRepository, JWTManagerRepository>();
+            services.AddSingleton<IJWTManagerRepository, JWTManagerRepository>();
 
             services.AddControllers();
             services.AddSwaggerGen(c =>

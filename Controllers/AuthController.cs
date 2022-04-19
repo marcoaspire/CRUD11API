@@ -11,6 +11,8 @@ using System.IO;
 using System.Text;
 using System.Web.Helpers;
 using Crud11API.ViewModels;
+using Crud11API.Repository;
+using Microsoft.AspNetCore.Authorization;
 //using System.Web.Http;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -22,12 +24,15 @@ namespace Crud11API.Controllers
     public class AuthController : ControllerBase
     {
         private readonly PaymentDetailContext _context;
+        private readonly IJWTManagerRepository _jWTManager;
 
-        public AuthController(PaymentDetailContext context)
+        public AuthController(PaymentDetailContext context, IJWTManagerRepository jWTManager)
         {
             _context = context;
+            this._jWTManager = jWTManager;
         }
-       
+
+        [Authorize]
         [HttpGet]
         /*public async Task<ActionResult<IEnumerable<User>>> Get()
         {
@@ -40,15 +45,44 @@ namespace Crud11API.Controllers
             return _context.Users.ToList();
         }
         */
-        //revalidate token
         public ActionResult Get()
         {
             //return Ok(_context.Users.ToList());
-            return Ok(new { results = _context.Users.ToList(), msg= "Renew" });
+            return Ok(new { results = _context.Users.ToList(), msg= "ALl users" });
+
+        }
+        //revalidate token
+        [HttpGet]
+        [Route("renew")]
+        public ActionResult RefreshToken()
+        {
+            Debug.WriteLine("Renew2");
+
+            string token = (Request.Headers["x-token"]);
+            if (token == null)
+            {
+                return Ok(new {  msg = "Did not receive a token, 401 Unautorized" });//401 unautorized
+
+            }
+            else
+            {
+                //validate jwt
+                Tokens t = _jWTManager.VerifyToken(token);
+                if (t.RefreshToken == true)
+                {
+                    var userLog = _context.Users.SingleOrDefault(user => user.UserID.ToString() == t.Token);
+                    var newToken = _jWTManager.Authenticate(userLog);
+                    return Ok(new { ok = true, id = userLog.UserID, name = userLog.Name, token = newToken.Token });
+                }
+
+            }
+            return Ok(new { msg = "Error2" });
+
 
         }
 
         [HttpPost]
+        //Authenticate
         public ActionResult PostLogin(LoginViewModel u)
         {
             Debug.WriteLine("QWWWWWWWWWWWWWWWW");
@@ -64,32 +98,32 @@ namespace Crud11API.Controllers
 
                     //Debug.WriteLine(Crypto.HashPassword(u.Password));
 
-                    
                     var userLog = _context.Users.SingleOrDefault(user => user.Email == u.Email );
 
                     Debug.WriteLine(userLog);
 
-
-                    var validate = Crypto.VerifyHashedPassword(userLog.Password, u.Password);
-
-                    Debug.WriteLine(validate);
-                    Debug.WriteLine("Validation");
-
-                    //var userLog = _context.Users.SingleOrDefault(user => user.Email == u.Email && user.Password == u.Password );
-                    if (!validate)
-                    {
-                        return NotFound();
-                    }
-
                     if (userLog == null)
                     {
                         //Debug.WriteLine(Crypto.HashPassword(u.Password));
-
-                        return NotFound();
+                        return Ok(new { ok = false,  msg = "Email invalid" });
                     }
                     else
                     {
-                        return Ok(new { user = userLog });
+                        var validate = Crypto.VerifyHashedPassword(userLog.Password, u.Password);
+
+                        Debug.WriteLine(validate);
+                        Debug.WriteLine("Validation");
+
+                        //var userLog = _context.Users.SingleOrDefault(user => user.Email == u.Email && user.Password == u.Password );
+                        if (!validate)
+                        {
+                            return Ok(new { ok = false, msg = "Password invalid" });
+
+                        }
+
+                        var token = _jWTManager.Authenticate(userLog);
+
+                        return Ok(new { ok=true,id = userLog.UserID, name= userLog.Name, token= token.Token });
 
                     }
 
@@ -97,7 +131,8 @@ namespace Crud11API.Controllers
                 }
                 catch (Exception)
                 {
-                    return ValidationProblem();
+                    return Ok(new { ok = false, msg = "Invalid credentials" });
+
                 }
 
             }
@@ -139,11 +174,23 @@ namespace Crud11API.Controllers
         [HttpPost]
         public ActionResult Post(User user)
         {
-            var passwordHash = Crypto.HashPassword(user.Password);
-            user.Password = passwordHash;
-            _context.Users.Add(user);
-            _context.SaveChanges();
-            return Ok(new { user = user , msg = "New user" });
+            try
+            {
+                var passwordHash = Crypto.HashPassword(user.Password);
+                user.Password = passwordHash;
+                var token = _jWTManager.Authenticate(user);
+                _context.Users.Add(user);
+                _context.SaveChanges();
+
+                return Ok(new { ok = true, id = user.UserID, name = user.Name, token = token.Token });
+
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+
         }
 
         /*
